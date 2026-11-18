@@ -1,0 +1,30 @@
+LEGATO WORSHIP — By Freddy Lara
+PAQUETE PWA PARA GITHUB PAGES
+
+ARCHIVOS
+- index.html: aplicación completa.
+- manifest.webmanifest: configuración para instalarla como aplicación.
+- sw.js: caché básica para abrir la aplicación sin conexión después de la primera visita.
+- icons/: icono azul petróleo y dorado para la aplicación.
+
+PUBLICAR EN GITHUB
+1. Descarga y descomprime el ZIP.
+2. Sube TODO el contenido de esta carpeta a la raíz del repositorio (no subas solamente el ZIP).
+3. En GitHub abre Settings > Pages.
+4. En Build and deployment elige Deploy from a branch, selecciona main y /(root), y guarda.
+5. Espera a que GitHub Pages publique el sitio y abre la dirección HTTPS.
+
+INSTALAR COMO APP
+- Android (Chrome): abre la página y elige Instalar aplicación o Agregar a pantalla principal.
+- Windows/Chrome o Edge: usa el icono Instalar de la barra de direcciones o el menú del navegador.
+- iPhone/iPad (Safari): Compartir > Agregar a pantalla de inicio.
+La instalación y el modo sin conexión requieren que GitHub Pages esté publicado en HTTPS. Abre la aplicación al menos una vez con conexión antes de probar el modo sin conexión.
+
+DATOS Y RESPALDOS
+- Las canciones, repertorios y servicios se guardan en el almacenamiento local del navegador (localStorage) de ese dispositivo.
+- Los datos no se sincronizan automáticamente entre dispositivos ni se guardan en GitHub.
+- Usa las opciones de respaldo/exportación de la aplicación con regularidad y conserva el archivo fuera del navegador.
+- Si borras los datos del sitio en el navegador, puedes perder la información local. Restaura desde tu respaldo.
+
+ACTUALIZACIONES
+Cuando publiques una versión nueva, cambia el nombre CACHE en sw.js (por ejemplo, legato-worship-pwa-v2) para que los dispositivos descarguen la nueva versión.
