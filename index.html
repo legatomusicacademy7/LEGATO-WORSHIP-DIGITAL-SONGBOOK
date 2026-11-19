@@ -401,8 +401,8 @@ button{font:inherit}
             <div class="cifra-results-head"><h3 id="cifraResultsTitle">Resultados de búsqueda</h3><span class="cifra-results-count" id="cifraResultsCount"></span></div>
             <div class="cifra-result-list" id="cifraResultList"></div>
           </div>
-          <a class="cifra-direct-link" href="https://www.cifraclub.com.br/" target="_blank" rel="noopener noreferrer">Abrir Cifra Club directamente ↗</a>
-          <p class="cifra-help">LEGATO muestra coincidencias disponibles en el buscador integrado. Al elegir una versión, se abre su página de origen. La importación de letra y acordes continúa siendo manual.</p>
+          <a class="cifra-direct-link" href="https://www.cifraclub.com/@legatodigitalsongbook/#google_vignette" target="_blank" rel="noopener noreferrer">Visitar perfil LEGATO en Cifra Club ↗</a>
+          <p class="cifra-help">Escribe el título o artista y pulsa Buscar canciones. Cifra Club abrirá los resultados de esa búsqueda en una pestaña nueva. También puedes visitar directamente el perfil LEGATO. La importación de letra y acordes continúa siendo manual.</p>
         </div>
         <div class="panel cifra-import-panel">
           <div class="section-head" style="margin-top:0"><div><h2>Importar canción a mi biblioteca</h2><p>Pega aquí la letra y los acordes copiados. Puedes conservarlos juntos tal como aparecen.</p></div><span class="mini-label">LEGATO WORSHIP</span></div>
@@ -598,71 +598,27 @@ button{font:inherit}
     if(old)songs=songs.map(s=>s.id===id?song:s);else songs.push(song);
     if(persistSongs()){closeSongForm();renderSongs();renderFavorites();renderRepertoires();showToast(old?"Canción actualizada.":"Canción guardada en tu biblioteca.");}
   });
-  // Buscador integrado: consulta el endpoint público documentado de Cifralize
-  // con el filtro CifraClub y presenta las coincidencias dentro de LEGATO.
+  // Buscador directo de Cifra Club: abre la búsqueda solicitada en una pestaña nueva.
+  // El perfil LEGATO queda disponible mediante el enlace visible de esta sección.
   const cifraForm=document.getElementById("cifraSearchForm");
   const cifraInput=document.getElementById("cifraSearchInput");
-  const cifraButton=document.getElementById("cifraSearchButton");
   const cifraResults=document.getElementById("cifraResults");
   const cifraResultList=document.getElementById("cifraResultList");
-  function cifraResultUrl(item){
-    const raw=item.url||item.link||item.href||item.permalink||item.cifra_url||item.song_url||"";
-    if(typeof raw==="string"&&/^https?:\/\//i.test(raw))return raw;
-    const slug=item.slug||item.path||item.uri||"";
-    if(typeof slug==="string"&&slug){
-      if(/^https?:\/\//i.test(slug))return slug;
-      return "https://cifralize.com.br/"+slug.replace(/^\/+/,"");
-    }
-    return "";
-  }
-  function normalizeCifraResults(payload){
-    let rows=Array.isArray(payload)?payload:(payload?.results||payload?.data||payload?.items||payload?.songs||payload?.musics||payload?.tracks||[]);
-    if(!Array.isArray(rows)&&rows&&typeof rows==="object")rows=Object.values(rows);
-    if(!Array.isArray(rows))return [];
-    return rows.map(item=>{
-      const artist=typeof item.artist==="string"?item.artist:(item.artist?.name||item.author?.name||item.author||item.band||"");
-      const title=item.title||item.name||item.song||item.music||item.musica||"";
-      const source=item.source||item.provider||item.platform||item.origin||"Cifra Club";
-      return {title:String(title||"Canción sin título"),artist:String(artist||"Artista no especificado"),source:String(source),tone:String(item.tone||item.key||item.tom||""),url:cifraResultUrl(item)};
-    }).filter(item=>item.url);
-  }
-  function showCifraMessage(message,query){
-    const fallback="https://www.cifraclub.com.br/search/?q="+encodeURIComponent(query);
-    cifraResultList.innerHTML='<div class="cifra-results-message">'+esc(message)+'<br><br><a href="'+fallback+'" target="_blank" rel="noopener noreferrer">Buscar «'+esc(query)+'» directamente en Cifra Club ↗</a></div>';
-    cifraResults.hidden=false;
-    document.getElementById("cifraResultsTitle").textContent="No se pudo mostrar la lista";
-    document.getElementById("cifraResultsCount").textContent="";
-  }
-  cifraForm.addEventListener("submit",async e=>{
+  const cifraProfileUrl="https://www.cifraclub.com/@legatodigitalsongbook/#google_vignette";
+  cifraForm.addEventListener("submit",e=>{
     e.preventDefault();
     const query=cifraInput.value.trim();
     if(!query){showToast("Escribe el título o artista que deseas buscar.");return;}
-    cifraResults.hidden=false;
-    document.getElementById("cifraResultsTitle").textContent="Buscando coincidencias…";
+    // Cifra Club ofrece búsqueda por texto; no documenta un filtro de resultados
+    // limitado a un perfil concreto.
+    const searchUrl="https://www.cifraclub.com/search/?q="+encodeURIComponent(query);
+    document.getElementById("cifraResultsTitle").textContent="Abriendo búsqueda en Cifra Club";
     document.getElementById("cifraResultsCount").textContent="";
-    cifraResultList.innerHTML='<div class="cifra-results-message">Buscando «'+esc(query)+'»…</div>';
-    cifraButton.disabled=true;cifraButton.textContent="Buscando…";
-    try{
-      const endpoint="https://cifralize.com.br/search?q="+encodeURIComponent(query)+"&format=json&source=CifraClub";
-      let response=await fetch(endpoint,{headers:{Accept:"application/json"}});
-      if(!response.ok)throw new Error("No se pudo consultar el buscador.");
-      let payload=await response.json();
-      let results=normalizeCifraResults(payload);
-      // Si el filtro de origen no está soportado por la versión del servicio,
-      // repetir la consulta general y conservar los enlaces que sí respondan.
-      if(!results.length){
-        response=await fetch("https://cifralize.com.br/search?q="+encodeURIComponent(query)+"&format=json",{headers:{Accept:"application/json"}});
-        if(response.ok){payload=await response.json();results=normalizeCifraResults(payload);}
-      }
-      if(!results.length){showCifraMessage("No encontramos coincidencias disponibles para esta búsqueda. Puedes probar otro título o abrir la búsqueda en Cifra Club.",query);return;}
-      document.getElementById("cifraResultsTitle").textContent="Coincidencias para «"+query+"»";
-      document.getElementById("cifraResultsCount").textContent=results.length+" resultado"+(results.length===1?"":"s");
-      cifraResultList.innerHTML=results.slice(0,20).map(item=>'<article class="cifra-result"><div class="cifra-result-info"><h4 class="cifra-result-title">'+esc(item.title)+'</h4><div class="cifra-result-meta"><span>'+esc(item.artist)+'</span>'+(item.tone?'<span>· Tono '+esc(item.tone)+'</span>':'')+'<span class="cifra-result-source">· '+esc(item.source)+'</span></div></div><a class="cifra-result-link" href="'+esc(item.url)+'" target="_blank" rel="noopener noreferrer">Ver cifra ↗</a></article>').join("");
-    }catch(error){
-      showCifraMessage("El servicio de búsqueda no respondió o bloqueó la consulta desde este navegador. Puedes abrir la búsqueda directamente en Cifra Club.",query);
-    }finally{
-      cifraButton.disabled=false;cifraButton.textContent="Buscar canciones";
-    }
+    cifraResultList.innerHTML='<div class="cifra-results-message">Buscando «'+esc(query)+'» directamente en Cifra Club.<br><br><a href="'+searchUrl+'" target="_blank" rel="noopener noreferrer">Abrir resultados de «'+esc(query)+'» ↗</a><br><br><a href="'+cifraProfileUrl+'" target="_blank" rel="noopener noreferrer">Visitar perfil LEGATO en Cifra Club ↗</a></div>';
+    cifraResults.hidden=false;
+    const opened=window.open(searchUrl,"_blank");
+    if(opened){try{opened.opener=null;}catch(error){}}
+    else{window.location.href=searchUrl;}
   });
   document.getElementById("cifraImportForm").addEventListener("submit",e=>{
     e.preventDefault();
