@@ -300,6 +300,9 @@ button{font:inherit}
 .cifra-import-panel .form-grid{margin-top:12px}
 @media(max-width:650px){.cifra-search-row{grid-template-columns:1fr}.cifraclub-panel,.cifra-import-panel{padding:16px}}
 
+
+/* Acordes y notas en dorado */
+.chord-gold{color:#F0D16B;font-weight:750;text-shadow:0 0 7px rgba(240,209,107,.12)}
 </style>
 </head>
 <body>
@@ -586,6 +589,18 @@ button{font:inherit}
   function persistRepertoires(){try{localStorage.setItem(REPERTOIRE_KEY,JSON.stringify(repertoires));updateDashboard();return true;}catch(e){showToast("No se pudo guardar el repertorio. Revisa el almacenamiento disponible.");return false;}}
   function updateDashboard(){const n=document.querySelectorAll(".stats .stat-number");if(n[0])n[0].textContent=songs.length;if(n[1])n[1].textContent=repertoires.length;if(n[2])n[2].textContent=services.length;}
   function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+  function chordColorMarkup(value){
+    const safe=esc(value);
+    const chord=/^[A-G](?:#|b)?(?:m|maj|min|dim|aug|sus|add)?(?:\d{1,2})?(?:\/[A-G](?:#|b)?)?$/;
+    return safe.split("\n").map(line=>{
+      const trimmed=line.trim();
+      const tokens=trimmed.split(/\s+/).filter(Boolean);
+      if(tokens.length && tokens.every(t=>chord.test(t))){
+        line=line.replace(/\b[A-G](?:#|b)?(?:m|maj|min|dim|aug|sus|add)?(?:\d{1,2})?(?:\/[A-G](?:#|b)?)?\b/g,'<span class="chord-gold">$&</span>');
+      }
+      return line.replace(/\[([^\]]+)\]/g,'<span class="chord-gold">[$1]</span>');
+    }).join("\n");
+  }
   function openSongForm(song){
     document.getElementById("songForm").reset();document.getElementById("songId").value=song?.id||"";document.getElementById("songTitle").value=song?.title||"";document.getElementById("songArtist").value=song?.artist||"";document.getElementById("songTone").value=song?.tone||"";document.getElementById("songCategory").value=song?.category||"Sin categoría";document.getElementById("songLyrics").value=song?.lyrics||"";document.getElementById("songChords").value=song?.chords||"";document.getElementById("songModalTitle").textContent=song?"Editar canción":"Agregar canción";songModal.classList.add("open");songModal.setAttribute("aria-hidden","false");setTimeout(()=>document.getElementById("songTitle").focus(),50);
   }
@@ -778,7 +793,7 @@ button{font:inherit}
           <div><div class="live-song-number">CANCIÓN ${String(i+1).padStart(2,"0")} DE ${String(liveSongs.length).padStart(2,"0")}</div><h3>${esc(s.title)}</h3><div class="live-song-meta">${esc(s.artist||"Artista no especificado")} · ${esc(s.category||"Sin categoría")}</div></div>
           <div class="live-song-controls"><button type="button" class="secondary-btn" data-live-step="-1" data-id="${esc(s.id)}">−1</button><span class="live-song-key" data-live-key="${esc(s.id)}">${esc(key)}</span><button type="button" class="secondary-btn" data-live-step="1" data-id="${esc(s.id)}">+1</button><button type="button" class="secondary-btn" data-live-reset="${esc(s.id)}">Original</button></div>
         </div>
-        <pre class="live-song-sheet">${esc(transposed)}</pre>
+        <pre class="live-song-sheet">${chordColorMarkup(transposed)}</pre>
       </article>`;
     }).join("");
   }
@@ -928,7 +943,7 @@ button{font:inherit}
           <button type="button" class="secondary-btn" data-fav-step="1" data-id="${esc(s.id)}" aria-label="Subir un semitono">+1</button>
           <button type="button" class="secondary-btn favorite-transpose-reset" data-fav-reset="${esc(s.id)}">Original</button>
         </div>
-        <pre class="favorite-song-sheet" data-fav-sheet="${esc(s.id)}">${esc(transposed||"Esta canción todavía no tiene letra ni acordes registrados.")}</pre>
+        <pre class="favorite-song-sheet" data-fav-sheet="${esc(s.id)}">${chordColorMarkup(transposed||"Esta canción todavía no tiene letra ni acordes registrados.")}</pre>
       </article>`;
     }).join("");
   }
@@ -952,7 +967,7 @@ button{font:inherit}
 
       const offset=favoriteOffsets[id];
       const sheet=[song.lyrics||"",song.chords||""].filter(Boolean).join("\n\n");
-      card.querySelector("[data-fav-sheet]").textContent=transposeSheet(sheet,offset)||"Esta canción todavía no tiene letra ni acordes registrados.";
+      card.querySelector("[data-fav-sheet]").innerHTML=chordColorMarkup(transposeSheet(sheet,offset)||"Esta canción todavía no tiene letra ni acordes registrados.");
       card.querySelector("[data-fav-key]").textContent=transposeKeyLabel(song,offset).replace(/^Tonalidad:\s*/,"");
       return;
     }
@@ -988,7 +1003,7 @@ button{font:inherit}
           <div><div class="live-song-number">CANCIÓN ${String(i+1).padStart(2,"0")} DE ${String(valid.length).padStart(2,"0")}</div><h3>${esc(s.title)}</h3><div class="live-song-meta">${esc(s.artist||"Artista no especificado")} · Tono: ${esc(s.tone||"—")}</div></div>
           <div class="live-song-controls"><button type="button" class="secondary-btn" data-rep-step="-1" data-id="${esc(s.id)}">−1</button><span class="live-song-key">${esc(key)}</span><button type="button" class="secondary-btn" data-rep-step="1" data-id="${esc(s.id)}">+1</button><button type="button" class="secondary-btn" data-rep-reset="1" data-id="${esc(s.id)}">Original</button></div>
         </div>
-        <pre class="live-song-sheet">${esc(transposeSheet(sheet,offset))}</pre>
+        <pre class="live-song-sheet">${chordColorMarkup(transposeSheet(sheet,offset))}</pre>
         <div class="rep-actions" style="justify-content:flex-end;margin-top:14px;gap:6px"><button class="icon-btn" data-rep-action="up" data-id="${esc(s.id)}" ${i===0?"disabled":""} title="Subir canción">↑</button><button class="icon-btn" data-rep-action="down" data-id="${esc(s.id)}" ${i===valid.length-1?"disabled":""} title="Bajar canción">↓</button><button class="icon-btn" data-rep-action="edit" data-id="${esc(s.id)}">Editar</button><button class="icon-btn" data-rep-action="remove" data-id="${esc(s.id)}">Quitar</button></div>
       </article>`;
     }).join("");
