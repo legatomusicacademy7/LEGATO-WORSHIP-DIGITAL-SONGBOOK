@@ -274,6 +274,32 @@ button{font:inherit}
 .rep-picker-empty{padding:18px}
 @media(max-width:560px){.rep-picker-search{grid-template-columns:1fr}.rep-picker-list{max-height:52vh}.rep-picker-row{padding:10px}}
 
+
+/* Etapa 6 · Búsqueda externa e importación manual */
+.cifraclub-panel,.cifra-import-panel{margin-bottom:16px;padding:22px}
+.cifra-brand{display:flex;align-items:center;gap:13px;margin-bottom:18px}
+.cifra-brand-icon{width:46px;height:46px;border-radius:13px;display:grid;place-items:center;background:rgba(214,181,109,.1);border:1px solid rgba(214,181,109,.35);color:var(--gold-light);font-size:24px}
+.cifra-brand h2{font:500 22px Georgia,serif;margin:0 0 5px}
+.cifra-brand p{font-size:11px;color:var(--muted);margin:0}
+.cifra-search-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px}
+.cifra-direct-link{display:inline-block;color:var(--gold-light);font-size:11px;margin-top:14px;text-decoration:none}
+.cifra-direct-link:hover{text-decoration:underline}
+.cifra-help{font-size:11px;color:var(--muted);line-height:1.65;margin:12px 0 0}
+.cifra-results{margin-top:18px;border-top:1px solid var(--line);padding-top:16px}
+.cifra-results-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.cifra-results-head h3{font:500 16px Georgia,serif;margin:0;color:var(--cream)}
+.cifra-results-count{font-size:10px;color:var(--muted)}
+.cifra-result-list{display:grid;gap:9px}
+.cifra-result{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 14px;border:1px solid rgba(168,180,178,.16);border-radius:11px;background:rgba(11,20,24,.34)}
+.cifra-result-info{min-width:0}.cifra-result-title{font:500 15px Georgia,serif;color:var(--cream);margin:0 0 5px;overflow-wrap:anywhere}
+.cifra-result-meta{font-size:10px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap}.cifra-result-source{color:var(--gold-light)}
+.cifra-result-link{flex:0 0 auto;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(214,181,109,.38);border-radius:8px;padding:8px 11px;color:var(--gold-light);font-size:10px;white-space:nowrap}
+.cifra-result-link:hover{background:rgba(214,181,109,.1);border-color:var(--gold)}
+.cifra-results-message{padding:17px;border:1px dashed rgba(168,180,178,.22);border-radius:10px;color:var(--muted);font-size:11px;line-height:1.6;text-align:center}
+.cifra-results-message a{color:var(--gold-light)}
+.cifra-import-panel .form-grid{margin-top:12px}
+@media(max-width:650px){.cifra-search-row{grid-template-columns:1fr}.cifraclub-panel,.cifra-import-panel{padding:16px}}
+
 </style>
 </head>
 <body>
@@ -289,6 +315,7 @@ button{font:inherit}
     <nav class="nav" aria-label="Navegación principal">
       <button class="active" data-page="inicio"><span class="nav-icon">⌂</span>Inicio</button>
       <button data-page="biblioteca"><span class="nav-icon">♫</span>Biblioteca</button>
+      <button data-page="buscar-cancion"><span class="nav-icon">⌕</span>Buscar canción</button>
       <button data-page="repertorio"><span class="nav-icon">☆</span>Mi repertorio</button>
       <button data-page="mis-repertorios"><span class="nav-icon">♫</span>Mis repertorios</button>
       <button data-page="servicios"><span class="nav-icon">▤</span>Organizador de servicios</button>
@@ -360,6 +387,37 @@ button{font:inherit}
           <div class="empty-state library-empty"><div class="empty-symbol">♫</div><strong>Tu biblioteca está vacía</strong><span>Agrega tu primera canción para comenzar a construir tu colección.</span></div>
         </div>
         <div class="stage-note"><h3>Tu colección, bajo tu control</h3><p>Las canciones se guardan en el almacenamiento local de este navegador. No se envían a la nube. Usa respaldos periódicos cuando se implemente la función de exportación en la Etapa 7.</p></div>
+      </section>
+
+      <section class="page" id="page-buscar-cancion">
+        <div class="page-heading"><div><div class="eyebrow">Explorador musical</div><h1>Buscar canción</h1><p>Encuentra una cifra en Cifra Club y trae tu versión a LEGATO WORSHIP.</p></div></div>
+        <div class="panel cifraclub-panel">
+          <div class="cifra-brand"><span class="cifra-brand-icon">♫</span><div><h2>Cifra Club</h2><p>Busca una canción y selecciona la versión que deseas consultar.</p></div></div>
+          <form id="cifraSearchForm" class="cifra-search-row">
+            <input class="field-control" id="cifraSearchInput" type="search" placeholder="Nombre de la canción o artista…" aria-label="Buscar canción en Cifra Club" required>
+            <button class="primary-btn" id="cifraSearchButton" type="submit">Buscar canciones</button>
+          </form>
+          <div class="cifra-results" id="cifraResults" aria-live="polite" hidden>
+            <div class="cifra-results-head"><h3 id="cifraResultsTitle">Resultados de búsqueda</h3><span class="cifra-results-count" id="cifraResultsCount"></span></div>
+            <div class="cifra-result-list" id="cifraResultList"></div>
+          </div>
+          <a class="cifra-direct-link" href="https://www.cifraclub.com.br/" target="_blank" rel="noopener noreferrer">Abrir Cifra Club directamente ↗</a>
+          <p class="cifra-help">LEGATO muestra coincidencias disponibles en el buscador integrado. Al elegir una versión, se abre su página de origen. La importación de letra y acordes continúa siendo manual.</p>
+        </div>
+        <div class="panel cifra-import-panel">
+          <div class="section-head" style="margin-top:0"><div><h2>Importar canción a mi biblioteca</h2><p>Pega aquí la letra y los acordes copiados. Puedes conservarlos juntos tal como aparecen.</p></div><span class="mini-label">LEGATO WORSHIP</span></div>
+          <form id="cifraImportForm">
+            <div class="form-grid">
+              <div class="form-field"><label for="cifraImportTitle">TÍTULO DE LA CANCIÓN *</label><input class="field-control" id="cifraImportTitle" required placeholder="Ej. Tu fidelidad"></div>
+              <div class="form-field"><label for="cifraImportArtist">ARTISTA</label><input class="field-control" id="cifraImportArtist" placeholder="Nombre del artista o banda"></div>
+              <div class="form-field"><label for="cifraImportTone">TONALIDAD</label><input class="field-control" id="cifraImportTone" placeholder="Ej. G, C, Am"></div>
+              <div class="form-field"><label for="cifraImportCategory">CATEGORÍA</label><select class="field-control" id="cifraImportCategory"><option>Alabanza</option><option>Adoración</option><option>Himnos</option><option>Especial</option><option>Sin categoría</option></select></div>
+              <div class="form-field full"><label for="cifraImportSheet">LETRA Y ACORDES *</label><textarea class="field-control tall" id="cifraImportSheet" required placeholder="Pega aquí la cifra completa, manteniendo los acordes y la letra en sus posiciones…"></textarea><small class="cifra-help">Consejo: revisa el formato y la tonalidad antes de guardar. El contenido se almacenará localmente en este navegador.</small></div>
+            </div>
+            <div class="form-actions"><button class="secondary-btn" type="reset">Limpiar</button><button class="primary-btn" type="submit">＋ Añadir a mi biblioteca</button></div>
+          </form>
+        </div>
+        <div class="stage-note"><h3>Tu biblioteca, tus versiones</h3><p>Al importar, el contenido se guarda en tu biblioteca personal de LEGATO. Comprueba que tienes permiso para copiar o reutilizar la letra y respeta las condiciones de Cifra Club y los derechos de autor correspondientes.</p></div>
       </section>
 
       <section class="page" id="page-repertorio">
@@ -498,8 +556,8 @@ button{font:inherit}
 <script>
 (() => {
   "use strict";
-  const pages = ["inicio","biblioteca","repertorio","mis-repertorios","servicios","regalo","configuracion"];
-  const labels = {inicio:"Panel de inicio",biblioteca:"Biblioteca de canciones",repertorio:"Mi repertorio","mis-repertorios":"Mis repertorios",servicios:"Organizador de servicios",regalo:"Biblioteca de regalo",configuracion:"Configuración"};
+  const pages = ["inicio","biblioteca","buscar-cancion","repertorio","mis-repertorios","servicios","regalo","configuracion"];
+  const labels = {inicio:"Panel de inicio",biblioteca:"Biblioteca de canciones","buscar-cancion":"Buscar canción",repertorio:"Mi repertorio","mis-repertorios":"Mis repertorios",servicios:"Organizador de servicios",regalo:"Biblioteca de regalo",configuracion:"Configuración"};
   const STORAGE_KEY = "legato_worship_songs_v1";
   const REPERTOIRE_KEY = "legato_worship_repertoires_v1";
   const SERVICE_KEY = "legato_worship_services_v1";
@@ -540,6 +598,81 @@ button{font:inherit}
     if(old)songs=songs.map(s=>s.id===id?song:s);else songs.push(song);
     if(persistSongs()){closeSongForm();renderSongs();renderFavorites();renderRepertoires();showToast(old?"Canción actualizada.":"Canción guardada en tu biblioteca.");}
   });
+  // Buscador integrado: consulta el endpoint público documentado de Cifralize
+  // con el filtro CifraClub y presenta las coincidencias dentro de LEGATO.
+  const cifraForm=document.getElementById("cifraSearchForm");
+  const cifraInput=document.getElementById("cifraSearchInput");
+  const cifraButton=document.getElementById("cifraSearchButton");
+  const cifraResults=document.getElementById("cifraResults");
+  const cifraResultList=document.getElementById("cifraResultList");
+  function cifraResultUrl(item){
+    const raw=item.url||item.link||item.href||item.permalink||item.cifra_url||item.song_url||"";
+    if(typeof raw==="string"&&/^https?:\/\//i.test(raw))return raw;
+    const slug=item.slug||item.path||item.uri||"";
+    if(typeof slug==="string"&&slug){
+      if(/^https?:\/\//i.test(slug))return slug;
+      return "https://cifralize.com.br/"+slug.replace(/^\/+/,"");
+    }
+    return "";
+  }
+  function normalizeCifraResults(payload){
+    let rows=Array.isArray(payload)?payload:(payload?.results||payload?.data||payload?.items||payload?.songs||payload?.musics||payload?.tracks||[]);
+    if(!Array.isArray(rows)&&rows&&typeof rows==="object")rows=Object.values(rows);
+    if(!Array.isArray(rows))return [];
+    return rows.map(item=>{
+      const artist=typeof item.artist==="string"?item.artist:(item.artist?.name||item.author?.name||item.author||item.band||"");
+      const title=item.title||item.name||item.song||item.music||item.musica||"";
+      const source=item.source||item.provider||item.platform||item.origin||"Cifra Club";
+      return {title:String(title||"Canción sin título"),artist:String(artist||"Artista no especificado"),source:String(source),tone:String(item.tone||item.key||item.tom||""),url:cifraResultUrl(item)};
+    }).filter(item=>item.url);
+  }
+  function showCifraMessage(message,query){
+    const fallback="https://www.cifraclub.com.br/search/?q="+encodeURIComponent(query);
+    cifraResultList.innerHTML='<div class="cifra-results-message">'+esc(message)+'<br><br><a href="'+fallback+'" target="_blank" rel="noopener noreferrer">Buscar «'+esc(query)+'» directamente en Cifra Club ↗</a></div>';
+    cifraResults.hidden=false;
+    document.getElementById("cifraResultsTitle").textContent="No se pudo mostrar la lista";
+    document.getElementById("cifraResultsCount").textContent="";
+  }
+  cifraForm.addEventListener("submit",async e=>{
+    e.preventDefault();
+    const query=cifraInput.value.trim();
+    if(!query){showToast("Escribe el título o artista que deseas buscar.");return;}
+    cifraResults.hidden=false;
+    document.getElementById("cifraResultsTitle").textContent="Buscando coincidencias…";
+    document.getElementById("cifraResultsCount").textContent="";
+    cifraResultList.innerHTML='<div class="cifra-results-message">Buscando «'+esc(query)+'»…</div>';
+    cifraButton.disabled=true;cifraButton.textContent="Buscando…";
+    try{
+      const endpoint="https://cifralize.com.br/search?q="+encodeURIComponent(query)+"&format=json&source=CifraClub";
+      let response=await fetch(endpoint,{headers:{Accept:"application/json"}});
+      if(!response.ok)throw new Error("No se pudo consultar el buscador.");
+      let payload=await response.json();
+      let results=normalizeCifraResults(payload);
+      // Si el filtro de origen no está soportado por la versión del servicio,
+      // repetir la consulta general y conservar los enlaces que sí respondan.
+      if(!results.length){
+        response=await fetch("https://cifralize.com.br/search?q="+encodeURIComponent(query)+"&format=json",{headers:{Accept:"application/json"}});
+        if(response.ok){payload=await response.json();results=normalizeCifraResults(payload);}
+      }
+      if(!results.length){showCifraMessage("No encontramos coincidencias disponibles para esta búsqueda. Puedes probar otro título o abrir la búsqueda en Cifra Club.",query);return;}
+      document.getElementById("cifraResultsTitle").textContent="Coincidencias para «"+query+"»";
+      document.getElementById("cifraResultsCount").textContent=results.length+" resultado"+(results.length===1?"":"s");
+      cifraResultList.innerHTML=results.slice(0,20).map(item=>'<article class="cifra-result"><div class="cifra-result-info"><h4 class="cifra-result-title">'+esc(item.title)+'</h4><div class="cifra-result-meta"><span>'+esc(item.artist)+'</span>'+(item.tone?'<span>· Tono '+esc(item.tone)+'</span>':'')+'<span class="cifra-result-source">· '+esc(item.source)+'</span></div></div><a class="cifra-result-link" href="'+esc(item.url)+'" target="_blank" rel="noopener noreferrer">Ver cifra ↗</a></article>').join("");
+    }catch(error){
+      showCifraMessage("El servicio de búsqueda no respondió o bloqueó la consulta desde este navegador. Puedes abrir la búsqueda directamente en Cifra Club.",query);
+    }finally{
+      cifraButton.disabled=false;cifraButton.textContent="Buscar canciones";
+    }
+  });
+  document.getElementById("cifraImportForm").addEventListener("submit",e=>{
+    e.preventDefault();
+    const title=document.getElementById("cifraImportTitle").value.trim();
+    const sheet=document.getElementById("cifraImportSheet").value;
+    if(!title||!sheet.trim()){showToast("Completa el título y pega la letra con sus acordes.");return;}
+    openSongForm({title,artist:document.getElementById("cifraImportArtist").value.trim(),tone:document.getElementById("cifraImportTone").value.trim(),category:document.getElementById("cifraImportCategory").value,lyrics:sheet,chords:""});
+    showToast("Revisa la canción y pulsa Guardar para añadirla a tu biblioteca.");
+  });
+
   function filteredSongs(){const q=document.getElementById("songSearch").value.trim().toLocaleLowerCase("es"),cat=document.getElementById("categoryFilter").value,sort=document.getElementById("sortSongs").value;const a=songs.filter(s=>(!q||(s.title+" "+(s.artist||"")).toLocaleLowerCase("es").includes(q))&&(!cat||s.category===cat));a.sort((x,y)=>{const A=(sort==="artist"?x.artist||"":x.title||"").toLocaleLowerCase("es"),B=(sort==="artist"?y.artist||"":y.title||"").toLocaleLowerCase("es");return(sort==="za"?-1:1)*A.localeCompare(B,"es");});return a;}
   function refreshCategories(){const el=document.getElementById("categoryFilter"),v=el.value,cats=[...new Set(songs.map(s=>s.category||"Sin categoría"))].sort((a,b)=>a.localeCompare(b,"es"));el.innerHTML='<option value="">Todas las categorías</option>'+cats.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("");if(cats.includes(v))el.value=v;}
   function songActions(s){return `<div class="song-actions"><button class="icon-btn ${s.favorite?"favorite":""}" data-action="favorite" data-id="${esc(s.id)}">${s.favorite?"★ Favorita":"☆ Favorita"}</button><button class="icon-btn" data-action="add-rep" data-id="${esc(s.id)}">＋ Repertorio</button><button class="icon-btn" data-action="view" data-id="${esc(s.id)}">Ver</button><button class="icon-btn" data-action="edit" data-id="${esc(s.id)}">Editar</button><button class="icon-btn" data-action="copy" data-id="${esc(s.id)}">Copiar</button><button class="icon-btn" data-action="share" data-id="${esc(s.id)}">Compartir</button><button class="icon-btn" data-action="print" data-id="${esc(s.id)}">Imprimir</button><button class="icon-btn" data-action="delete" data-id="${esc(s.id)}">Eliminar</button></div>`;}
