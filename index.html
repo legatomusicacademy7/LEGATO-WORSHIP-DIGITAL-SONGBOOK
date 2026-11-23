@@ -428,7 +428,7 @@ button{font:inherit}
       <button data-page="configuracion"><span class="nav-icon">⚙</span>Configuración</button>
     </nav>
     <div class="sidebar-bottom">
-      <div class="status"><span class="status-dot"></span> Cuenta sincronizada</div>
+      <div class="status" id="cloudStatus" data-state="pending"><span class="status-dot" id="cloudStatusDot"></span><span id="cloudStatusText">Comprobando sincronización…</span></div>
       <div class="account-email" id="accountEmail"></div>
       <button class="logout-btn" id="logoutBtn" type="button">Cerrar sesión</button>
       <div class="version">LEGATO WORSHIP · By Freddy Lara</div>
@@ -490,7 +490,7 @@ button{font:inherit}
         <div class="library-list" id="songList">
           <div class="empty-state library-empty"><div class="empty-symbol">♫</div><strong>Tu biblioteca está vacía</strong><span>Agrega tu primera canción para comenzar a construir tu colección.</span></div>
         </div>
-        <div class="stage-note"><h3>Tu colección, bajo tu control</h3><p>Las canciones se guardan en el almacenamiento local de este navegador. No se envían a la nube. Usa respaldos periódicos cuando se implemente la función de exportación en la Etapa 7.</p></div>
+        <div class="stage-note"><h3>Tu colección, bajo tu control</h3><p>Las canciones se guardan en este dispositivo y se sincronizan con tu cuenta cuando Supabase confirma el guardado. Si no hay conexión, los cambios quedan pendientes.</p></div>
       </section>
 
       <section class="page" id="page-buscar-cancion">
@@ -516,7 +516,7 @@ button{font:inherit}
               <div class="form-field"><label for="cifraImportArtist">ARTISTA</label><input class="field-control" id="cifraImportArtist" placeholder="Nombre del artista o banda"></div>
               <div class="form-field"><label for="cifraImportTone">TONALIDAD</label><input class="field-control" id="cifraImportTone" placeholder="Ej. G, C, Am"></div>
               <div class="form-field"><label for="cifraImportCategory">CATEGORÍA</label><select class="field-control" id="cifraImportCategory"><option>Alabanza</option><option>Adoración</option><option>Himnos</option><option>Especial</option><option>Sin categoría</option></select></div>
-              <div class="form-field full"><label for="cifraImportSheet">LETRA Y ACORDES *</label><textarea class="field-control tall" id="cifraImportSheet" required placeholder="Pega aquí la cifra completa, manteniendo los acordes y la letra en sus posiciones…"></textarea><small class="cifra-help">Consejo: revisa el formato y la tonalidad antes de guardar. El contenido se almacenará localmente en este navegador.</small></div>
+              <div class="form-field full"><label for="cifraImportSheet">LETRA Y ACORDES *</label><textarea class="field-control tall" id="cifraImportSheet" required placeholder="Pega aquí la cifra completa, manteniendo los acordes y la letra en sus posiciones…"></textarea><small class="cifra-help">Consejo: revisa el formato y la tonalidad antes de guardar. El contenido se guardará en este dispositivo y se sincronizará con tu cuenta cuando haya conexión.</small></div>
             </div>
             <div class="form-actions"><button class="secondary-btn" type="reset">Limpiar</button><button class="primary-btn" type="submit">＋ Añadir a mi biblioteca</button></div>
           </form>
@@ -688,8 +688,18 @@ button{font:inherit}
   } catch (authInitError) {
     console.error("LEGATO: error al inicializar Supabase", authInitError);
   }
-  let currentUser = null, activeUserId = null, cloudSaveTimer = null, cloudLoading = false;
+  let currentUser = null, activeUserId = null, cloudSaveTimer = null, cloudLoading = false, cloudSaveInFlight = false;
 
+  function setCloudStatus(state,message){
+    const box=document.getElementById("cloudStatus");
+    const dot=document.getElementById("cloudStatusDot");
+    const label=document.getElementById("cloudStatusText");
+    if(!box||!dot||!label)return;
+    box.dataset.state=state;
+    label.textContent=message;
+    dot.style.background=state==="ok"?"#8fb59b":state==="pending"?"#D6B56D":"#e49a8f";
+    dot.style.boxShadow=state==="ok"?"0 0 10px rgba(143,181,155,.5)":"none";
+  }
   function setAuthMessage(message,isError=false){
     const el=document.getElementById("authMessage");
     if(el){el.textContent=message||"";el.classList.toggle("error",!!isError);}
@@ -711,17 +721,38 @@ button{font:inherit}
     localStorage.setItem(OWNER_KEY,currentUser.id);
   }
   async function saveCloudData(){
-    if(!currentUser||cloudLoading||!supabaseClient)return;
-    const payload=localPayload();
-    const {error}=await supabaseClient.from("legato_user_data").upsert({
-      user_id:currentUser.id,payload,updated_at:new Date().toISOString()
-    },{onConflict:"user_id"});
-    if(error){showToast("No se pudo sincronizar. Se conservaron los cambios en este dispositivo.");console.warn("LEGATO cloud sync:",error.message);}
+    if(!currentUser||cloudLoading||!supabaseClient)return false;
+    if(cloudSaveInFlight){setCloudStatus("pending","Cambios pendientes de sincronizar");return false;}
+    cloudSaveInFlight=true;
+    setCloudStatus("pending","Sincronizando con la nube…");
+    try{
+      const payload=localPayload();
+      const {error}=await supabaseClient.from("legato_user_data").upsert({
+        user_id:currentUser.id,payload,updated_at:new Date().toISOString()
+      },{onConflict:"user_id"});
+      if(error)throw error;
+      setCloudStatus("ok","Sincronizado");
+      return true;
+    }catch(error){
+      console.error("LEGATO cloud save:",error);
+      setCloudStatus("error","Pendiente de sincronizar");
+      showToast("No se pudo guardar en la nube: "+(error.message||"revisa la configuración de Supabase"));
+      return false;
+    }finally{
+      cloudSaveInFlight=false;
+    }
   }
   function queueCloudSave(){
     if(!currentUser||cloudLoading)return;
     clearTimeout(cloudSaveTimer);
+    setCloudStatus("pending","Cambios pendientes de sincronizar");
     cloudSaveTimer=setTimeout(()=>{saveCloudData();},700);
+  }
+  function mergeById(cloudItems,localItems){
+    const merged=new Map();
+    (Array.isArray(cloudItems)?cloudItems:[]).forEach(item=>{if(item&&typeof item.id==="string")merged.set(item.id,item);});
+    (Array.isArray(localItems)?localItems:[]).forEach(item=>{if(item&&typeof item.id==="string")merged.set(item.id,item);});
+    return [...merged.values()];
   }
   async function bootstrapAuthenticatedUser(user){
     if(!user||!supabaseClient)return;
@@ -729,30 +760,47 @@ button{font:inherit}
     activeUserId=user.id;currentUser=user;cloudLoading=true;
     document.getElementById("accountEmail").textContent=user.email||"Cuenta LEGATO";
     setAppVisibility(true);
+    setCloudStatus("pending","Comprobando datos en la nube…");
     loadData();
     const previousOwner=localStorage.getItem(OWNER_KEY);
     const localData=localPayload();
-    const hasLocalData=localData.songs.length||localData.repertoires.length||localData.services.length;
-    const {data,error}=await supabaseClient.from("legato_user_data").select("payload").eq("user_id",user.id).maybeSingle();
-    if(error){
-      console.warn("LEGATO cloud load:",error.message);
-      if(previousOwner&&previousOwner!==user.id)writeLocalPayload({songs:[],repertoires:[],services:[]});
+    const canUseLocal=!previousOwner||previousOwner===user.id;
+    try{
+      const {data,error}=await supabaseClient.from("legato_user_data").select("payload").eq("user_id",user.id).maybeSingle();
+      if(error)throw error;
+      if(data&&data.payload&&typeof data.payload==="object"){
+        const cloudData=data.payload;
+        const combined=canUseLocal?{
+          songs:mergeById(cloudData.songs,localData.songs),
+          repertoires:mergeById(cloudData.repertoires,localData.repertoires),
+          services:mergeById(cloudData.services,localData.services)
+        }:cloudData;
+        writeLocalPayload(combined);
+        cloudLoading=false;
+        await saveCloudData();
+      }else{
+        const initialPayload=canUseLocal?localData:{songs:[],repertoires:[],services:[]};
+        writeLocalPayload(initialPayload);
+        cloudLoading=false;
+        await saveCloudData();
+      }
+    }catch(error){
+      console.error("LEGATO cloud load:",error);
+      if(!canUseLocal)writeLocalPayload({songs:[],repertoires:[],services:[]});
       else localStorage.setItem(OWNER_KEY,user.id);
-      showToast("No se pudo consultar la nube. Se usarán los datos locales.");
-    }else if(data&&data.payload&&typeof data.payload==="object"){
-      writeLocalPayload(data.payload);
-    }else{
-      const initialPayload=(!previousOwner||previousOwner===user.id)?localData:{songs:[],repertoires:[],services:[]};
-      writeLocalPayload(initialPayload);
+      setCloudStatus("error","Nube no disponible · datos locales conservados");
+      showToast("No se pudieron consultar los datos en Supabase: "+(error.message||"revisa las políticas de acceso"));
+    }finally{
       cloudLoading=false;
-      await saveCloudData();
     }
-    cloudLoading=false;
     loadData();migrateGiftSongContent();updateDashboard();renderSongs();renderFavorites();renderRepertoires();renderServices();renderGift();
     setAuthMessage("");
   }
+  window.addEventListener("online",()=>{if(currentUser){setCloudStatus("pending","Conexión recuperada · sincronizando…");saveCloudData();}});
+  window.addEventListener("offline",()=>{if(currentUser)setCloudStatus("pending","Sin conexión · cambios pendientes");});
   function handleSignedOut(){
-    currentUser=null;activeUserId=null;cloudLoading=false;
+    currentUser=null;activeUserId=null;cloudLoading=false;cloudSaveInFlight=false;
+    setCloudStatus("pending","Sesión cerrada");
     clearTimeout(cloudSaveTimer);
     songs=[];repertoires=[];services=[];
     document.getElementById("accountEmail").textContent="";
