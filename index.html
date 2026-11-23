@@ -677,7 +677,16 @@ button{font:inherit}
   const OWNER_KEY = "legato_worship_owner_uid_v1";
   const SUPABASE_URL = "https://ctsxwvvwuqxruotjuqbb.supabase.co";
   const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_OjTU0-1xfg7PiYlIMWqqxw_kfwJwq8a";
-  const supabaseClient = window.supabase?.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+  // Inicialización protegida: si la librería o la clave fallan, la pantalla
+  // sigue mostrando un mensaje y los botones no quedan sin respuesta.
+  let supabaseClient = null;
+  try {
+    if (window.supabase && typeof window.supabase.createClient === "function") {
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+    }
+  } catch (authInitError) {
+    console.error("LEGATO: error al inicializar Supabase", authInitError);
+  }
   let currentUser = null, activeUserId = null, cloudSaveTimer = null, cloudLoading = false;
 
   function setAuthMessage(message,isError=false){
@@ -750,41 +759,73 @@ button{font:inherit}
     setAuthMessage("Inicia sesión para abrir tu espacio de trabajo.");
   }
   if(supabaseClient){
-    supabaseClient.auth.onAuthStateChange((event,session)=>{
-      if(session?.user){setTimeout(()=>bootstrapAuthenticatedUser(session.user),0);}
-      else if(event==="SIGNED_OUT"){handleSignedOut();}
-    });
-    supabaseClient.auth.getSession().then(({data,error})=>{
-      if(error){setAuthMessage("No se pudo comprobar la sesión. Intenta iniciar sesión de nuevo.",true);return;}
-      if(data.session?.user)bootstrapAuthenticatedUser(data.session.user);
-      else handleSignedOut();
-    });
+    try {
+      supabaseClient.auth.onAuthStateChange((event,session)=>{
+        if(session?.user){setTimeout(()=>bootstrapAuthenticatedUser(session.user).catch(err=>{
+          console.error("LEGATO: error al cargar la cuenta",err);
+          setAuthMessage("La sesión inició, pero hubo un problema cargando tus datos. Recarga la aplicación.",true);
+        }),0);}
+        else if(event==="SIGNED_OUT"){handleSignedOut();}
+      });
+      supabaseClient.auth.getSession().then(({data,error})=>{
+        if(error){setAuthMessage("No se pudo comprobar la sesión: "+error.message,true);return;}
+        if(data.session?.user)bootstrapAuthenticatedUser(data.session.user).catch(err=>{
+          console.error("LEGATO: error al preparar la cuenta",err);
+          setAuthMessage("No se pudieron cargar los datos de la cuenta. Recarga la aplicación.",true);
+        });
+        else handleSignedOut();
+      }).catch(err=>{
+        console.error("LEGATO: error consultando la sesión",err);
+        setAuthMessage("No se pudo conectar con Supabase. Comprueba tu conexión e inténtalo de nuevo.",true);
+      });
+    } catch (authSetupError) {
+      console.error("LEGATO: error configurando autenticación",authSetupError);
+      setAuthMessage("No se pudo preparar el inicio de sesión. Recarga la aplicación.",true);
+    }
   }else{
-    setAuthMessage("No se pudo cargar el servicio de inicio de sesión. Revisa tu conexión e inténtalo de nuevo.",true);
+    setAuthMessage("No se pudo cargar Supabase. Comprueba tu conexión a internet y vuelve a abrir LEGATO.",true);
   }
+
   document.getElementById("authForm").addEventListener("submit",async e=>{
     e.preventDefault();
-    if(!supabaseClient){setAuthMessage("El servicio de inicio de sesión no está disponible.",true);return;}
     const email=document.getElementById("authEmail").value.trim();
     const password=document.getElementById("authPassword").value;
-    const btn=document.getElementById("loginBtn");btn.disabled=true;btn.textContent="Ingresando…";
-    setAuthMessage("Verificando tu cuenta…");
-    const {error}=await supabaseClient.auth.signInWithPassword({email,password});
-    btn.disabled=false;btn.textContent="Iniciar sesión";
-    if(error)setAuthMessage("No se pudo iniciar sesión: "+error.message,true);
+    if(!email || !password){setAuthMessage("Escribe tu correo y contraseña para iniciar sesión.",true);return;}
+    if(!supabaseClient){setAuthMessage("No se pudo conectar con el servicio de acceso. Comprueba tu conexión y recarga la aplicación.",true);return;}
+    const btn=document.getElementById("loginBtn");
+    btn.disabled=true;btn.textContent="Ingresando…";
+    setAuthMessage("Conectando con tu cuenta…");
+    try {
+      const {error}=await supabaseClient.auth.signInWithPassword({email,password});
+      if(error)setAuthMessage("No se pudo iniciar sesión: "+error.message,true);
+    } catch(err) {
+      console.error("LEGATO login:",err);
+      setAuthMessage("No se pudo completar el inicio de sesión. Revisa tu conexión e inténtalo de nuevo.",true);
+    } finally {
+      btn.disabled=false;btn.textContent="Iniciar sesión";
+    }
   });
+
   document.getElementById("signupBtn").addEventListener("click",async()=>{
-    if(!supabaseClient){setAuthMessage("El servicio de inicio de sesión no está disponible.",true);return;}
     const email=document.getElementById("authEmail").value.trim();
     const password=document.getElementById("authPassword").value;
-    if(!email||password.length<6){setAuthMessage("Escribe un correo válido y una contraseña de al menos 6 caracteres.",true);return;}
-    const btn=document.getElementById("signupBtn");btn.disabled=true;btn.textContent="Creando…";
+    if(!email){setAuthMessage("Primero escribe tu correo electrónico.",true);document.getElementById("authEmail").focus();return;}
+    if(password.length<6){setAuthMessage("Escribe una contraseña de al menos 6 caracteres.",true);document.getElementById("authPassword").focus();return;}
+    if(!supabaseClient){setAuthMessage("No se pudo conectar con el servicio de registro. Comprueba tu conexión y recarga la aplicación.",true);return;}
+    const btn=document.getElementById("signupBtn");
+    btn.disabled=true;btn.textContent="Creando…";
     setAuthMessage("Creando tu cuenta…");
-    const {data,error}=await supabaseClient.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}});
-    btn.disabled=false;btn.textContent="Crear cuenta";
-    if(error)setAuthMessage("No se pudo crear la cuenta: "+error.message,true);
-    else if(data.session)setAuthMessage("Cuenta creada. Ya puedes usar LEGATO WORSHIP.");
-    else setAuthMessage("Cuenta creada. Revisa tu correo para confirmar el registro y luego inicia sesión.");
+    try {
+      const {data,error}=await supabaseClient.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}});
+      if(error)setAuthMessage("No se pudo crear la cuenta: "+error.message,true);
+      else if(data?.session)setAuthMessage("Cuenta creada. Ya puedes usar LEGATO WORSHIP.");
+      else setAuthMessage("Registro recibido. Revisa tu correo para confirmar la cuenta y luego inicia sesión.");
+    } catch(err) {
+      console.error("LEGATO signup:",err);
+      setAuthMessage("No se pudo completar el registro. Comprueba tu conexión e inténtalo de nuevo.",true);
+    } finally {
+      btn.disabled=false;btn.textContent="Crear cuenta";
+    }
   });
   document.getElementById("logoutBtn").addEventListener("click",async()=>{
     if(!supabaseClient)return;
